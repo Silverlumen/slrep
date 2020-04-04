@@ -1,0 +1,260 @@
+load 'Neuron'
+load 'Sinaps'
+
+class NeuronNet
+    @sinapsArray = []
+    @neuronArray = []
+    def initialize
+        @epsilon = 0.3
+        @alfa = 0.5
+
+        @outputNeuronCash = Neuron.new('CASH', 0, -1)
+        @rowsCash = 0
+    end
+    attr_accessor :rowsCash, :sinapsArray, :neuronArray, :outputNeuronCash
+    attr_reader :epsilon, :alfa
+
+    def countRows
+        
+        @rowsCash = 0
+        @rows = 0
+        
+            for neuron in @neuronArray
+                if @rows < neuron.row
+                    @rows = neuron.row
+                end
+	        @rowsCash = @rows + 1
+            end
+        
+        @rowsCash
+    end
+    
+    def getNeuronsFromRow(rowNumber)
+        @neurons = []
+        @neuronArray.each do |neuron|
+            if(rowNumber == neuron.row)
+                 @neurons << neuron
+            end
+        end
+        return @neurons
+    end
+
+    def getInSinapses(neuron)    
+        @sinapses = []
+        #puts "Neuron in getInSinapses is #{neuron.name}"
+        @sinapsArray.each do |sinaps|
+            #puts "Out #{sinaps.neuronOut.name} in  #{neuron.name}"
+            if sinaps.neuronOut.name == neuron.name
+                @sinapses << sinaps
+            end
+        end
+        return @sinapses
+    end
+
+    def activationFunction(inValue)
+        return 1.0/(1.0 + Math.exp(0 - inValue))
+    end
+
+    def countNeuronValue(inSinapses)
+        @h1 = 0.0
+        for sinaps in inSinapses
+             @h1 = @h1 + sinaps.value * sinaps.neuronIn.value
+        end
+        @hOutpit = activationFunction(@h1)
+        return @hOutpit
+    end
+    
+    def runNeuron
+        @rows = countRows
+        #puts('RUN NEURON!')
+        (1..@rows-1).each do |i|
+            #puts "Counting row: #{i}"
+            @neurons = getNeuronsFromRow(i)
+            @neurons.each do |neuron| 
+                @inSinapses = getInSinapses(neuron)
+                #puts neuron
+                #puts @inSinapses
+                neuron.value = countNeuronValue(@inSinapses)
+                #puts "Neuron #{neuron.name} value: #{neuron.value}"
+                #puts "#{i} <<>> #{@rows - 1}  value #{@value}"
+                if i == @rows - 1
+                    return neuron.value
+	        end
+            end
+        end
+    end
+    
+    def fSigmoid(out)
+        (1 - out) * out
+    end
+
+    def getOutputNeuron
+        if @outputNeuronCash.row == 0
+            @rows = countRows
+            @outputNeuronCash = getNeuronsFromRow(@rows-1)[0]
+        end
+        return @outputNeuronCash
+    end
+    
+    def sigmaOutput(outIdeal, outActual)
+        #puts "OutIdeal: #{outIdeal}"
+        #puts "OutActual: #{outActual}"
+        return (outIdeal - outActual) * fSigmoid(outActual)
+    end
+
+    def mor(grad, dw)
+        return @epsilon * grad + @alfa * dw
+    end
+
+    def grad(a, b)
+        return a * b
+    end
+
+    def sigmaHidden(neuron)
+        @outSinapses = getOutSinapses(neuron)
+        @fSigmoid = fSigmoid(neuron.value)
+        @sum = 0
+        @outSinapses.each do |sinaps|
+            @sum = @sum + sinaps.value * sinaps.neuronOut.delta
+        end
+        return @sum * @fSigmoid
+    end
+
+    def teachInNeuronSinapses(neuron)
+        @neuronSinapses = getInSinapses(neuron)
+        @neuronSinapses.each do |sinaps|
+            n = sinaps.neuronIn
+            n.delta = sigmaHidden(n)
+            #puts "#{n.value}, #{sinaps.deltaValueLast}"
+            grad = n.value * sinaps.neuronOut.delta
+            dw = mor(grad, sinaps.deltaValueLast)
+            sinaps.deltaValueLast = dw
+            sinaps.value = sinaps.value + dw
+            #puts "Sinaps #{sinaps.name}, grad: #{grad}, dw: #{dw}, value: #{sinaps.value}"    
+        end
+    end
+
+    def teachNeuronNetItirarion(outIdeal, outActual)
+        @outNeuron = getOutputNeuron
+        @outNeuron.delta = sigmaOutput(outIdeal, outActual)
+        #puts('TEACH NEURON NET ITERATION')
+        #puts "Out neuron (#{@outNeuron.name}) delta: #{@outNeuron.delta}"
+        teachInNeuronSinapses(@outNeuron)
+        (0.. (@outNeuron.row - 1)).each do |i|
+            #puts "Row: #{i}"
+            @neurons = getNeuronsFromRow((@outNeuron.row - 1) - i)
+            @neurons.each do |neuron|
+                #puts "Neuron sinaps study #{neuron.name}"
+                teachInNeuronSinapses(neuron)
+            end
+        end
+     end
+
+    def fTangh(out)
+        return 1 - out * out
+    end
+
+    def getOutSinapses(neuron)
+        @sinapses = []
+        for sinaps in @sinapsArray
+            if sinaps.neuronIn.name == neuron.name
+                @sinapses << sinaps
+            end
+        end
+        return @sinapses
+    end
+end
+
+class ResultTableLine
+    
+    @result = 0.0
+    attr_accessor :a, :b, :c, :result
+    def initialize(a = 0.0, b = 0.0, c = 0.0)
+        @a = a
+        @b = b
+        @c = c
+    end
+end
+      
+def offset
+    @xorResultTable.each do |r|
+        if r.c < r.result - @delta or r.c > r.result + @delta
+            return false
+        end
+    end
+    return true
+end
+
+def main
+   
+    @xorResultTable = [ResultTableLine.new(0, 0, 0),
+                    ResultTableLine.new(0, 1, 1),
+                    ResultTableLine.new(1, 0, 1),
+                    ResultTableLine.new(1, 1, 0)]
+
+  
+    @delta = 0.01   
+
+
+
+    @i1 = Neuron.new("I1", 0)
+    @i2 = Neuron.new("I2", 0)
+    @h1 = Neuron.new("H1", 1)
+    @h2 = Neuron.new("H2", 1)
+    @o1 = Neuron.new("O1", 2)
+
+    
+    @w1 = Sinaps.new("w1",@i1, @h1, 0.45)
+    @w2 = Sinaps.new("w2",@i1, @h2, 0.78)
+    @w3 = Sinaps.new("w3",@i2, @h1, -0.12)
+    @w4 = Sinaps.new("w4",@i2, @h2, 0.13)
+    @w5 = Sinaps.new("w5",@h1, @o1, 1.5)
+    @w6 = Sinaps.new("w6",@h2, @o1, -2.3)
+
+    @i1.value = 1.0
+    @i2.value = 0.0 
+    @nn = NeuronNet.new()
+    
+    @nn.sinapsArray = [@w1, @w2, @w3, @w4, @w5, @w6]
+    @nn.neuronArray = [@i1, @i2, @h1, @h2, @o1]
+
+    puts('TEST FROM EXAMPLE')
+    
+
+    
+    @ans = @nn.runNeuron()
+    puts "First ans: #{@ans}"
+    @nn.teachNeuronNetItirarion(1, @ans)
+    @ans = @nn.runNeuron()
+    puts "Second ans: #{@ans}"
+
+    puts('RUNING STUDY')
+    @i = 0
+    
+    @previous = Time.now
+
+    @startTime = Time.now
+    loop do 
+        @xorResultTable.each do |r|
+            @i1.value = r.a
+            @i2.value = r.b
+            @ans = @nn.runNeuron()
+            @nn.teachNeuronNetItirarion(r.c, @ans)
+            r.result = @ans
+        end
+        if @i%100000 == 0
+            current = Time.now
+            delta = current - @previous
+            @previous = current
+            puts "Iteration #{@i}, W: #{@xorResultTable[0].c}, H: #{@xorResultTable[0].result}, W: #{@xorResultTable[1].c}, H: #{@xorResultTable[1].result}, W: #{@xorResultTable[2].c}, H: #{@xorResultTable[2].result}, W:#{@xorResultTable[3].c}, H: #{@xorResultTable[3].result}, deltaTime: #{delta}"       
+            break if offset
+        end
+        @i = @i + 1
+    @stopTime = Time.now
+    @deltaMs = @stopTime - @startTime
+    @deltaS = @deltaMs/1000
+    end
+    puts "Study time [s]: #{@deltaS}, \nStudy time [ms]: #{@deltaMs}"
+end
+
+main
