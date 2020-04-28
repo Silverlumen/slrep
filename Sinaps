@@ -1,0 +1,16 @@
+load 'Neuron'
+
+class Sinaps
+    
+    attr_accessor :value, :deltaValueLast
+    attr_reader :neuronIn, :neuronOut, :name
+    def initialize(name, neuronIn, neuronOut, value = 0.0)
+        @name = name
+        @neuronIn = neuronIn
+        @neuronOut = neuronOut
+        @value = value
+        @grad = 0.0
+        @deltaValueLast = 0.0
+    end
+    
+end

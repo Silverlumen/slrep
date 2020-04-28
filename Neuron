@@ -1,0 +1,13 @@
+class Neuron
+    public
+    @delta = 0.0
+    attr_accessor :value, :delta, :name
+    attr_reader :row
+
+    def initialize(name = "", row = 0, value = 0.0)
+        @name = name
+        @row = row
+        @value = value
+    end
+
+end
